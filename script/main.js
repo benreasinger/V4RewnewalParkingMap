@@ -358,7 +358,6 @@ function removeCar(parkingNumber) {
     }
 }
 
-
 function undoRemove() {
     if (lastRemovedSlot) {
         const slot = parkingSlots.find(s => s["parking-number"] === lastRemovedSlot["parking-number"]);

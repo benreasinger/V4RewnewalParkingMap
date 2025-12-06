@@ -1,34 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wrapping Test</title>
-  <link rel="stylesheet" href="../stylesheet/giftWrap.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wrapping Tracker</title>
+  <link rel="stylesheet" href="../stylesheet/giftWrap.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="../script/wrap.js" defer></script>
 </head>
 <body>
-<div class="nav-bar" >
+
+  <div class="nav-bar">
     <h1>Wrapping Station</h1>
-</div>
-<button class="bag-but" onclick="openWrapModal()">Create A New Bag Tracker</button>
+    <a href="wrapper.html"><button class="bag-but" onclick="">Parking App Screen</button></a>
+  </div>
 
-<div id="bags"></div>
+  <button class="bag-but" onclick="openWrapModal()">Create a New Bag Tracker</button>
 
- <div id="WrapModal" class="modal">
+  <div class="columns">
+    <div class="column top">
+      <h2>🟥 Waiting</h2>
+      <div id="waitingBags"></div>
+    </div>
+    <div class="column top">
+      <h2>🟨 In Progress</h2>
+      <div id="activeBags"></div>
+    </div>
+    <div class="column bottom">
+      <h2>🟩 Completed</h2>
+      <div id="completedBags"></div>
+    </div>
+  </div>
+
+  <!-- Add Bag Modal -->
+  <div id="WrapModal" class="modal">
     <div class="modal-content">
       <span class="close" onclick="closeWrapModal()">&times;</span>
-      <h3>Add A New Infocard!</h3>
-      <input type="text" id="newCarNumber" placeholder="Enter Ticket Number" oninput="this.value = this.value.replace(/[^0-9-]/g, '').slice(0, 11)">
-      <input type="number" id="newChildCount" placeholder="Enter Child Count" min="1" max="10">
-      <input type="number" id="newBagCount" placeholder="Enter Bag Count" min="1" max="25">
-
-      
-        <button onclick="createWrapCard()">Submit</button>
+      <h3>Add a New Infocard</h3>
+      <input type="text" id="newCarNumber" placeholder="Enter Ticket Number" />
+      <input type="number" id="spotCount" placeholder="Enter Spot Number" min="1" max="600" />
+      <input type="number" id="newChildCount" placeholder="Enter Child Count" min="1" max="10" />
+      <input type="number" id="newBagCount" placeholder="Enter Bag Count" min="1" max="25" />
+      <button onclick="createWrapCard()">Submit</button>
     </div>
-
   </div>
+
+  <!-- Edit Bag Modal -->
+  <div id="EditModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeEditModal()">&times;</span>
+      <h3>Edit Bag Information</h3>
+      <input type="hidden" id="editBagId" />
+      <input type="text" id="editCarNumber" placeholder="Ticket Number" />
+      <input type="number" id="editSpotNum" placeholder="Spot Number" min="1" max="600" />
+      <input type="number" id="editChildCount" placeholder="Child Count" min="1" max="10" />
+      <input type="number" id="editBagCount" placeholder="Bag Count" min="1" max="25" />
+      <input type="text" id="editWorkStation" placeholder="Workstation #" />
+      <button onclick="saveBagEdits()">Confirm Changes</button>
+    </div>
+  </div>
+
 </body>
 </html>
