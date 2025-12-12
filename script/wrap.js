@@ -25,11 +25,10 @@ function closeWrapModal() {
 // Create new bag(s)
 function createWrapCard() {
   const carNumber = document.getElementById("newCarNumber").value.trim();
-  const childCount = parseInt(document.getElementById("newChildCount").value.trim());
   const bagCount = parseInt(document.getElementById("newBagCount").value.trim());
   const spotNum = document.getElementById("spotCount").value.trim();
 
-  if (!carNumber || !childCount || !bagCount || !spotNum) {
+  if (!carNumber || !bagCount || !spotNum) {
     alert("Please fill out all fields.");
     return;
   }
@@ -37,7 +36,6 @@ function createWrapCard() {
   for (let i = 1; i <= bagCount; i++) {
     const newBag = {
       carNumber,
-      childCount,
       bagIndex: i,
       bagMax: bagCount,
       spotNum,
@@ -55,7 +53,6 @@ function createWrapCard() {
 
 function clearModalInputs() {
   document.getElementById("newCarNumber").value = "";
-  document.getElementById("newChildCount").value = "";
   document.getElementById("spotCount").value = "";
   document.getElementById("newBagCount").value = "";
 }
@@ -85,19 +82,26 @@ function renderBags(snapshot) {
     const firstBag = group[0];
 
     if (allWrapped) {
-      // Combined card for completed ticket
+      // Combined completed card
       const card = document.createElement("div");
       card.classList.add("bag-card");
       card.innerHTML = `
         <div class="banner completed" style="background-color: #8e44ad;">All Completed</div>
         <h3>Ticket #${firstBag.carNumber}</h3>
         <h4>Spot #${firstBag.spotNum}</h4>
-        <p>Children: ${firstBag.childCount}</p>
+        <p>Total Bags: ${firstBag.bagMax}</p>
         <p>Workstation: ${firstBag.workStation || "Not Assigned"}</p>
+        <button class="delete-complete-btn" style="background:#c0392b;color:white;margin-top:10px;">Delete Completed Ticket</button>
       `;
 
-      card.addEventListener("click", () => openEditModal(firstBag.key, firstBag, true));
+      // Delete entire completed ticket
+      card.querySelector(".delete-complete-btn").onclick = (e) => {
+        e.stopPropagation();
+        deleteEntireTicket(group);
+      };
+
       completedDiv.appendChild(card);
+
     } else {
       // Render individual bags
       group.forEach(bag => {
@@ -113,7 +117,6 @@ function renderBags(snapshot) {
           ${statusBanner}
           <h3><strong>Bag ${bag.bagIndex}/${bag.bagMax}</strong> - Ticket #${bag.carNumber}</h3>
           <h4>Spot #${bag.spotNum}</h4>
-          <p>Children: ${bag.childCount}</p>
           <p>Status: ${bag.wrapped ? "Wrapped" : "Not Wrapped"}</p>
         `;
 
@@ -150,6 +153,20 @@ function markBagWrapped(bagId, bag) {
   }
 }
 
+// Delete entire completed ticket (all bags in group)
+function deleteEntireTicket(bagGroup) {
+  if (!confirm("Delete all bags for this completed ticket?")) return;
+
+  const updates = {};
+  bagGroup.forEach(bag => {
+    updates[bag.key] = null;
+  });
+
+  database.ref("bags").update(updates).then(() => {
+    console.log("Completed ticket removed.");
+  });
+}
+
 // Edit Modal
 function openEditModal(bagId, bagData, combined=false) {
   const modal = document.getElementById("EditModal");
@@ -159,7 +176,6 @@ function openEditModal(bagId, bagData, combined=false) {
   document.getElementById("editBagId").value = bagId;
   document.getElementById("editCarNumber").value = bagData.carNumber;
   document.getElementById("editSpotNum").value = bagData.spotNum;
-  document.getElementById("editChildCount").value = bagData.childCount;
   document.getElementById("editBagCount").value = bagData.bagMax;
   document.getElementById("editWorkStation").value = bagData.workStation || "";
 
@@ -181,18 +197,14 @@ function openEditModal(bagId, bagData, combined=false) {
   const saveBtn = modalContent.querySelector("button[onclick='saveBagEdits()']");
 
   if (bagData.status === "completed" || combined) {
-    // Completed: read-only, hide save
     document.getElementById("editCarNumber").disabled = true;
     document.getElementById("editSpotNum").disabled = true;
-    document.getElementById("editChildCount").disabled = true;
     document.getElementById("editBagCount").disabled = true;
     document.getElementById("editWorkStation").disabled = true;
     saveBtn.style.display = "none";
   } else {
-    // Workstation editable
     document.getElementById("editCarNumber").disabled = true;
     document.getElementById("editSpotNum").disabled = true;
-    document.getElementById("editChildCount").disabled = true;
     document.getElementById("editBagCount").disabled = true;
     document.getElementById("editWorkStation").disabled = false;
     saveBtn.style.display = "inline-block";
