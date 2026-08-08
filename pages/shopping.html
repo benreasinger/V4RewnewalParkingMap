@@ -1,35 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shopping Status</title>
-  <link rel="stylesheet" href="../stylesheet/styles.css">
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="../script/main.js" defer></script>
-</head>
-<body>
-  <div class="nav-bar" id="reindeer-nav">
-    <h1>Status Screen</h1>
-    <h5>Please update the statuses as you go!</h5>
-  </div>
-  <div class="dropdown">
-  <button onclick="toggleSortDropdown()" class="dropbtn">Sort By ▼</button>
-  <div id="sortDropdownContent" class="dropdown-content">
-    <a href="#" onclick="setSortMode('default')">Default</a>
-    <a href="#" onclick="setSortMode('waited')">Waited Time</a>
-    <a href="#" onclick="setSortMode('status-time')">Status & Waited</a>
-  </div>
-</div>
-
-  <div id="parkingMap"></div>
-  <div class="fab-container">
-    <!-- Sub-buttons -->
-    <button class="fab-sub" id="btn-undo" onclick="goBack()">↩</button>
-
-    <!-- Main FAB -->
-    <button class="fab-main" onclick="toggleFab()">+</button>
-  </div>
-</body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#35143f">
+    <meta name="description" content="Manage Christmas Store families through the shopping workflow.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Shopper · Renewal Parking</title>
+    <link rel="icon" href="../assets/renewal-logo.png">
+    <link rel="stylesheet" href="../stylesheet/styles.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="../script/main.js" defer></script>
+  </head>
+  <body class="page-shopping" data-page="vehicles" data-role="shopper">
+    <main id="app" class="app-root" aria-label="Shopper workspace">
+      <section class="boot-screen" aria-live="polite">
+        <div class="boot-spinner" aria-hidden="true"></div>
+        <p class="boot-label">Loading shopper workflow…</p>
+      </section>
+    </main>
+    <noscript><p class="noscript-message">Please enable JavaScript to update shopper statuses.</p></noscript>
+  </body>
 </html>

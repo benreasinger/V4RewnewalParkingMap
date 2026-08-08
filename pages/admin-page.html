@@ -1,38 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Screen</title>
-  <link rel="stylesheet" href="../stylesheet/styles.css">
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="../script/main.js" defer></script>
-</head>
-<body>
-  <div class="nav-bar">
-    <h1 class="title" id="adminTitle">Admin Page</h1>
-    <button id="back" onclick="goBack()">Back</button>
-  </div>
-
-  <a href="parkingmap.html"><button class="changebutton" id="adminchangebutt">Preview All Parked Cars</button></a>
-  <a href="removedCar.html"><button class="changebutton" id="adminchangebutt">All Removed Vehicles</button></a>
-
-  <div class="admin-stats-container">
-  <section id="adminStats" class="stats-panel">
-    <h2> Live Parking Stats</h2>
-    <p><strong>Total Parked:</strong> <span id="totalParked">0</span></p>
-    <p><strong>Empty Spots:</strong> <span id="emptySpots">0</span></p>
-    <div id="statusCounts"></div>
-  </section>
-
-  <div id="analyticsSummary" class="analytics-summary">
-    <h2> Analytics Summary</h2>
-    <p><strong>Total Removed Cars:</strong> <span id="analyticsTotal">0</span></p>
-    <p><strong>Average Parked Time:</strong> <span id="analyticsAvgTime">-</span></p>
-    <div id="statusBreakdown"></div>
-  </div>
-</div>
-
-</body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#35143f">
+    <meta name="description" content="Renewal Parking administrator operations dashboard.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Administrator · Renewal Parking</title>
+    <link rel="icon" href="../assets/renewal-logo.png">
+    <link rel="stylesheet" href="../stylesheet/styles.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="../script/main.js" defer></script>
+  </head>
+  <body class="page-admin" data-page="admin" data-role="admin">
+    <main id="app" class="app-root" aria-label="Administrator dashboard">
+      <section class="boot-screen" aria-live="polite">
+        <div class="boot-spinner" aria-hidden="true"></div>
+        <p class="boot-label">Loading administrator dashboard…</p>
+      </section>
+    </main>
+    <noscript><p class="noscript-message">Please enable JavaScript to use the administrator dashboard.</p></noscript>
+  </body>
 </html>

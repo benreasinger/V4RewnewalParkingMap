@@ -1,57 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome Screen</title>
-  <link rel="stylesheet" href="../stylesheet/index.css">
-  <script src="../script/main.js" defer></script>
-</head>
-<body>
-  <div class="nav-bar">
-    <h1 class="title">Help Screen!</h1>
-    <button class="changebutton" onclick="goBack()">Back</button>
-  </div>
-  <h2><u>⚠️Unsure where to go?⚠️</u></h2>
-  <div class="glass-card">
-<p>If you're unsure of your assigned role for the day, please check with a team lead, or supervisor before beginning. Each role—whether it’s Parking, Shopper/Registration, or Reindeer—has specific responsibilities that contribute to the overall success of the operation.
-
- <br><br>Clear communication and role awareness ensure tasks are completed efficiently, reduce confusion, and help us provide a smooth and positive experience for everyone involved.
-  
- <br><br> <b>Remember:</b> we’re all part of one team, and when each person understands their role, everything runs better. Don’t hesitate to ask questions or confirm your assignment before jumping in!</p>
-
- <p id="phoneNum"><br>Text or call <a href="tel:3178208750"><u>317-820-8750</u></a> or email <a href="mailto:reasingerben@gmail.com">reasingerben@gmail.com</a> for any help!</p>
-  </div>
-  <h2><u>General Help!</u></h2>
-<div class="Help_Container">
-  <div class="glass-card">
-    <li>
-      <b>🛠️ Action Guide</b>
-      <p>Use the button in the lower right corner to access key actions based on your role—whether you're managing parking, shopping for guests, or delivering packages as a reindeer. Below is a quick guide to help you choose the right job and understand your responsibilities:</p>
-    </li>
-  </div>
-<h2><u>Jobs and their roles:</u></h2>
-<div class="Help_Container">
-  <div class="glass-card">
-    <li>
-      <b>🚗 Parking Management</b>
-      <p>Parking team members are responsible for adding vehicles to the map, assigning them to available parking spots, and setting key information such as language preference (English or Spanish). They help ensure that incoming guests are visible and organized for the rest of the team.</p>
-    </li>
-  </div>
-  <div class="glass-card">
-    <li>
-      <b>🛒 Shopper / Registration</b>
-      <p>Shoppers manage car statuses to keep all systems up to date. By updating statuses accurately and promptly, they help ensure a smooth experience and give the team a real-time understanding of vehicle progress and estimated wait times.</p>
-    </li>
-    </div>
-  <div>
-    <div class="glass-card">
-      <li>
-        <b>🎁 Reindeer (Delivery Team)</b>
-        <p>Reindeer are in charge of removing cars from the map after presents (or bags) have been delivered. Please only remove a car once all bags have been handed off to the vehicle. If you remove a car by mistake, don’t worry—a local "Undo Remove" button is available in the bottom left corner of your screen.</p>
-      </li>
-      </div>
-  </div>
-</div>
-</body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#35143f">
+    <meta name="description" content="Renewal Parking help center and volunteer app guide.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Help &amp; Settings · Renewal Parking</title>
+    <link rel="icon" href="../assets/renewal-logo.png">
+    <link rel="stylesheet" href="../stylesheet/styles.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="../script/main.js" defer></script>
+  </head>
+  <body class="page-help" data-page="help">
+    <main id="app" class="app-root" aria-label="Help and settings">
+      <section class="boot-screen" aria-live="polite">
+        <div class="boot-spinner" aria-hidden="true"></div>
+        <p class="boot-label">Loading help and settings…</p>
+      </section>
+    </main>
+    <noscript><p class="noscript-message">Please enable JavaScript to open the app guide.</p></noscript>
+  </body>
 </html>

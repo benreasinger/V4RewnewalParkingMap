@@ -1,42 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Parking Map</title>
-  <link rel="stylesheet" href="../stylesheet/styles.css">
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="../script/main.js" defer></script>
-</head>
-<body>
-  <div class="nav-bar">
-    <h1 class="title">Renewal Parking Map</h1>
-    <div class="buttons">
-      <button id="undoButton" onclick="undoRemove()" disabled>Undo Remove</button>
-      <button id="refresh" onclick="refresh()">Refresh</button>
-      <button id="back" onclick="goBack()">Back</button>
-      <!-- <a href='display-only.html'><button>Stats</button></a> -->
-      </div>
-  </div>
-  <input type="text" id="searchInput" placeholder="Search Car #..." oninput="searchCar()" pattern="[\d-]*" title="Only numbers and dashes are allowed">
-
-  <div id="parkingMap"></div>
-
-  <div id="vehicleModal" class="modal">
-    <div class="modal-content">
-      <span class="close" onclick="closeModal()">&times;</span>
-      <h3>Add New Vehicle</h3>
-      <input type="text" id="newCarNumber" placeholder="Enter Car Number" oninput="this.value = this.value.replace(/[^0-9-]/g, '').slice(0, 11)">
-      <select id="newCarLanguage">
-        <option value="english">English</option>
-        <option value="spanish">Spanish</option>
-      </select>
-      <input type="number" id="parkingNumberInput" placeholder="Parking Spot Number" min="1">
-      <button onclick="createVehicle()">Add Vehicle</button>
-    </div>
-  </div>
-
-  </div>
-</body>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#35143f">
+    <meta name="description" content="Live view of all Renewal Christmas Store parking spaces.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>All Parking Spots · Renewal Parking</title>
+    <link rel="icon" href="../assets/renewal-logo.png">
+    <link rel="stylesheet" href="../stylesheet/styles.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="../script/main.js" defer></script>
+  </head>
+  <body class="page-spots" data-page="spots" data-role="admin">
+    <main id="app" class="app-root" aria-label="All parking spots">
+      <section class="boot-screen" aria-live="polite">
+        <div class="boot-spinner" aria-hidden="true"></div>
+        <p class="boot-label">Loading all 160 parking spots…</p>
+      </section>
+    </main>
+    <noscript><p class="noscript-message">Please enable JavaScript to view parking spaces.</p></noscript>
+  </body>
 </html>

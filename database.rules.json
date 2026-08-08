@@ -1,0 +1,89 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "config": {
+      ".read": "auth != null",
+      "activeEventId": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
+      }
+    },
+    "users": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
+      "$uid": {
+        ".read": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)",
+        "uid": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "email": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "displayName": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "photoURL": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "createdAt": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "lastLoginAt": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "roles": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
+        },
+        "$other": { ".validate": false }
+      }
+    },
+    "events": {
+      "$eventId": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('roles').hasChildren()",
+        "meta": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
+        },
+        "vehicles": {
+          "$vehicleId": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('admin').val() == true || (!data.exists() && newData.exists() && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || (root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true && newData.child('status').val() == 'Waiting for Reindeer'))) || (data.exists() && newData.exists() && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || root.child('users').child(auth.uid).child('roles').child('shopper').val() == true || root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true)) || (data.exists() && !newData.exists() && root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true && data.child('status').val() == 'Waiting for Reindeer'))"
+          }
+        },
+        "bags": {
+          ".indexOn": ["vehicleId"],
+          "$bagId": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+          }
+        },
+        "deliveries": {
+          "$deliveryId": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+          }
+        },
+        "removed": {
+          "$removalId": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
+          }
+        },
+        "spotIndex": {
+          "$spot": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+          }
+        },
+        "carIndex": {
+          "$car": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+          }
+        },
+        "statusHistory": {
+          "$vehicleId": {
+            "$entryId": {
+              ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || root.child('users').child(auth.uid).child('roles').child('shopper').val() == true || root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+            }
+          }
+        },
+        "activity": {
+          "$entryId": {
+            ".write": "auth != null && root.child('users').child(auth.uid).child('roles').hasChildren()"
+          }
+        }
+      }
+    },
+    "presence": {
+      "$eventId": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
+        "$uid": {
+          "$sessionId": {
+            ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+          }
+        }
+      }
+    }
+  }
+}
