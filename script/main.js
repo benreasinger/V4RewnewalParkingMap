@@ -2412,6 +2412,35 @@
     );
   }
 
+  function updateMobileBottomNav() {
+  const viewport = window.visualViewport;
+
+  if (!viewport) {
+    document.documentElement.style.setProperty(
+      "--mobile-browser-bottom",
+      "0px"
+    );
+    return;
+  }
+
+  const hiddenBottomArea = Math.max(
+    0,
+    window.innerHeight - viewport.height - viewport.offsetTop
+  );
+
+  document.documentElement.style.setProperty(
+    "--mobile-browser-bottom",
+    `${hiddenBottomArea}px`
+  );
+}
+
+window.visualViewport?.addEventListener("resize", updateMobileBottomNav);
+window.visualViewport?.addEventListener("scroll", updateMobileBottomNav);
+window.addEventListener("resize", updateMobileBottomNav);
+window.addEventListener("orientationchange", updateMobileBottomNav);
+
+updateMobileBottomNav();
+
   async function start() {
     if (page === "home") return renderHome();
     initFirebase();
