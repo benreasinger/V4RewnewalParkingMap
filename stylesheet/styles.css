@@ -2006,3 +2006,148 @@ a {
     font-size: .62rem
   }
 }
+/* Additive styles for the GitHub Pages update. Keep this after styles.css. */
+.fetch-ready-notice {
+    position: fixed;
+    top: max(1rem, env(safe-area-inset-top));
+    right: 1rem;
+    z-index: 10000;
+    width: min(25rem, calc(100vw - 2rem));
+    padding: 1rem 3rem 1rem 1rem;
+    border: 2px solid #5f9d62;
+    border-radius: 1rem;
+    background: #eff9ef;
+    color: #183f20;
+    box-shadow: 0 16px 45px rgb(24 35 30 / 24%);
+    animation: fetch-notice-in .22s ease-out;
+}
+
+.fetch-ready-notice strong {
+    display: block;
+    margin-bottom: .25rem;
+    font-size: 1.05rem;
+}
+
+.fetch-ready-notice p {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.fetch-ready-notice button {
+    position: absolute;
+    top: .55rem;
+    right: .65rem;
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+@keyframes fetch-notice-in {
+    from {
+        opacity: 0;
+        transform: translateY(-.65rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-launcher-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .9rem;
+    margin: 0 0 1.25rem;
+}
+
+.admin-launcher-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .15rem .75rem;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid rgb(53 20 63 / 15%);
+    border-radius: 1rem;
+    background: #fff;
+    color: inherit;
+    text-decoration: none;
+    box-shadow: 0 5px 20px rgb(53 20 63 / 7%);
+}
+
+.admin-launcher-card>span {
+    grid-row: 1 / span 2;
+    font-size: 1.6rem;
+    color: #6c3477;
+}
+
+.admin-launcher-card strong {
+    color: #35143f;
+}
+
+.admin-launcher-card small {
+    color: var(--muted, #6f6872);
+}
+
+.admin-launcher-card:hover,
+.admin-launcher-card:focus-visible,
+.admin-launcher-card.active {
+    border-color: #744781;
+    background: #f8f1fa;
+    outline: none;
+}
+
+.event-banner {
+    margin-bottom: 1rem;
+    padding: .8rem 1rem;
+    border-radius: .75rem;
+    background: #f3edf5;
+    color: #35143f;
+}
+
+.admin-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.admin-tools-grid .wide {
+    grid-column: 1 / -1;
+}
+
+.admin-section-copy {
+    color: var(--muted, #6f6872);
+    font-size: .86rem;
+}
+
+.admin-tools-grid .toolbar a {
+    text-decoration: none;
+}
+
+@media (max-width: 760px) {
+
+    .admin-launcher-grid,
+    .admin-tools-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-tools-grid .wide {
+        grid-column: auto;
+    }
+
+    .fetch-ready-notice {
+        right: .75rem;
+        width: calc(100vw - 1.5rem);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fetch-ready-notice {
+        animation: none;
+    }
+}

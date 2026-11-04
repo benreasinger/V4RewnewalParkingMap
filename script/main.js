@@ -15,8 +15,8 @@
   };
 
   const APP = {
-    totalSpots: 160,
-    defaultEventId: "christmas-store-2026",
+    totalSpots: 62,
+    defaultEventId: "TestEvent11.4",
     statuses: [
       "In-Car",
       "Fetch-to-shop",
@@ -49,32 +49,6 @@
       reindeer: "reindeer.html",
       admin: "admin-page.html",
     },
-    defaultShiftOptions: {
-      friday_evening: {
-        label: "Friday, 5:30 PM – 8:30 PM",
-        dayOfWeek: 5,
-        start: "17:30",
-        end: "20:30",
-      },
-      saturday_morning: {
-        label: "Saturday, 9:30 AM – 12:00 PM",
-        dayOfWeek: 6,
-        start: "09:30",
-        end: "12:00",
-      },
-      saturday_midday: {
-        label: "Saturday, 11:45 AM – 2:00 PM",
-        dayOfWeek: 6,
-        start: "11:45",
-        end: "14:00",
-      },
-      saturday_afternoon: {
-        label: "Saturday, 1:45 PM – 4:15 PM",
-        dayOfWeek: 6,
-        start: "13:45",
-        end: "16:15",
-      },
-    },
   };
 
   const body = document.body;
@@ -95,22 +69,19 @@
     presence: {},
     users: {},
     allEvents: {},
-    volunteerCheckins: {},
-    checkInSettings: {},
     search: "",
     selectedStatuses: new Set(),
     listeners: [],
     connected: false,
     lastSavedAt: null,
-    sessionId: sessionStorage.getItem("renewalSessionId") || makeId(),
     clockTimer: null,
     presenceTimer: null,
+    presenceRef: null,
+    vehicleSnapshotReady: false,
+    fetchReadySpots: new Set(),
+    fetchReadyTimer: null,
+    fetchNoticeTimer: null,
   };
-  sessionStorage.setItem("renewalSessionId", state.sessionId);
-
-  function makeId() {
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  }
 
   function esc(value) {
     return String(value ?? "").replace(
@@ -287,123 +258,20 @@
     try {
       await firebase.auth().signInWithPopup(provider);
     } catch (error) {
-      if (
-        [
-          "auth/popup-blocked",
-          "auth/operation-not-supported-in-this-environment",
-        ].includes(error.code)
-      ) {
-        await firebase.auth().signInWithRedirect(provider);
+      if (error.code === "auth/popup-blocked") {
+        renderLogin(
+          "Your browser blocked the Google sign-in window. Allow pop-ups for this site, then try again.",
+          true,
+        );
+      } else if (error.code === "auth/operation-not-supported-in-this-environment") {
+        renderLogin(
+          "Google sign-in cannot open in this in-app browser. Open this page directly in Safari or Chrome and try again.",
+          true,
+        );
       } else if (error.code !== "auth/popup-closed-by-user") {
         renderLogin(error.message || "Google sign-in failed.", true);
       }
     }
-  }
-
-  function currentShiftOptions() {
-    const configured = state.checkInSettings?.timeSlots;
-    return configured && Object.keys(configured).length
-      ? configured
-      : APP.defaultShiftOptions;
-  }
-
-  function shiftEndTimestamp(shift) {
-    const now = new Date();
-    const target = new Date(now);
-    const dayOffset = (Number(shift.dayOfWeek) - now.getDay() + 7) % 7;
-    target.setDate(now.getDate() + dayOffset);
-    const [hours, minutes] = String(shift.end || "23:59")
-      .split(":")
-      .map(Number);
-    target.setHours(hours || 0, minutes || 0, 0, 0);
-    return target.getTime();
-  }
-
-  function renderVolunteerCheckinPage(successMessage = "") {
-    const shifts = currentShiftOptions();
-    const roleChoices = APP.roles.filter((role) => role !== "admin");
-    injectApp(
-      "pages/checkin.html / volunteer kiosk",
-      `
-      <section class="checkin-page">
-        <div class="checkin-card">
-          <div class="role-brand checkin-brand">
-            <div class="asset-slot role-logo-slot"><img src="../assets/renewal-logo.png" alt="Renewal Neighborhood Church logo" onerror="Renewal.showAssetPlaceholder(this)"><div class="asset-fallback mini-logo-fallback" hidden>✚</div></div>
-            <div><div class="brand-name">RENEWAL</div><div class="brand-sub">CHRISTMAS STORE</div></div>
-          </div>
-          <div class="page-heading"><h1>Volunteer Check-In</h1><p>This kiosk records attendance only. It cannot open parking, family, or administrator data.</p></div>
-          ${successMessage ? `<div class="alert success">${esc(successMessage)}</div>` : ""}
-          <form onsubmit="Renewal.submitVolunteerCheckin(event)">
-            <div class="form-grid two">
-              <div class="field"><label for="checkinFirstName">First name</label><input class="input" id="checkinFirstName" name="firstName" maxlength="50" autocomplete="given-name" required></div>
-              <div class="field"><label for="checkinLastName">Last name</label><input class="input" id="checkinLastName" name="lastName" maxlength="50" autocomplete="family-name" required></div>
-              <div class="field"><label for="checkinRole">Role</label><select class="select" id="checkinRole" name="role" required><option value="">Choose a role</option>${roleChoices.map((role) => `<option value="${esc(role)}">${esc(APP.roleLabels[role])}</option>`).join("")}</select></div>
-              <div class="field"><label for="checkinShift">Time slot</label><select class="select" id="checkinShift" name="timeSlotId" required><option value="">Choose a time slot</option>${Object.entries(shifts).map(([id, shift]) => `<option value="${esc(id)}">${esc(shift.label)}</option>`).join("")}</select></div>
-            </div>
-            <button class="button success full checkin-submit" type="submit">Check In</button>
-          </form>
-          <p class="checkin-privacy">When a shift ends, shoppers automatically leave the available list. An administrator can also check volunteers out manually.</p>
-        </div>
-      </section>`,
-    );
-  }
-
-  async function submitVolunteerCheckin(event) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const firstName = String(form.get("firstName") || "").trim();
-    const lastName = String(form.get("lastName") || "").trim();
-    const role = String(form.get("role") || "");
-    const timeSlotId = String(form.get("timeSlotId") || "");
-    const shift = currentShiftOptions()[timeSlotId];
-    if (!firstName || !lastName || !shift || !APP.roles.includes(role) || role === "admin") {
-      return alert("Complete every check-in field.");
-    }
-    const user = firebase.auth().currentUser;
-    if (!user?.isAnonymous) {
-      return alert("The check-in kiosk session expired. Return to the Google sign-in screen and reopen it from the administrator dashboard.");
-    }
-    const checkinRef = firebase.database().ref(`${eventPath("volunteerCheckins")}`).push();
-    await write(
-      checkinRef.set({
-        firstName,
-        lastName,
-        displayName: `${firstName} ${lastName}`,
-        role,
-        timeSlotId,
-        timeSlotLabel: shift.label,
-        status: role === "shopper" ? "available" : "checked-in",
-        checkedInAt: serverTime(),
-        shiftEndAt: shiftEndTimestamp(shift),
-        createdByAnonymousUid: user.uid,
-      }),
-    );
-    renderVolunteerCheckinPage(`${firstName} ${lastName} is checked in for ${shift.label}.`);
-  }
-
-  async function launchVolunteerCheckin() {
-    if (currentRole !== "admin") return;
-    if (!confirm("Open volunteer check-in mode? This signs the administrator out so the kiosk cannot return to the dashboard.")) return;
-    sessionStorage.setItem("renewalCheckinEntry", "ready");
-    sessionStorage.removeItem("renewalSelectedRole");
-    await firebase.auth().signOut();
-    location.replace(pageFile("checkin.html"));
-  }
-
-  async function initializeVolunteerCheckin() {
-    const admitted = sessionStorage.getItem("renewalCheckinEntry") === "ready";
-    sessionStorage.removeItem("renewalCheckinEntry");
-    if (!admitted) {
-      location.replace("login.html");
-      return;
-    }
-    if (firebase.auth().currentUser) await firebase.auth().signOut();
-    await firebase.auth().signInAnonymously();
-    const eventSnapshot = await firebase.database().ref("config/activeEventId").once("value");
-    state.eventId = eventSnapshot.val() || APP.defaultEventId;
-    const settingsSnapshot = await firebase.database().ref(`${eventPath("checkinSettings")}`).once("value");
-    state.checkInSettings = settingsSnapshot.val() || {};
-    renderVolunteerCheckinPage();
   }
 
   async function ensureUserProfile(user) {
@@ -476,10 +344,10 @@
   function navigationItems(active) {
     if (currentRole === "admin") {
       return [
-        ["map", "⌖", "Map", pageFile("map.html")],
-        ["list", "☷", "List", pageFile("admin-page.html")],
+        ["list", "☷", "Dashboard", pageFile("admin-page.html")],
         ["stats", "▮", "Stats", pageFile("analytics.html")],
-        ["history", "▱", "Removed", pageFile("removedCar.html")],
+        ["tools", "⚙", "Admin", pageFile("admin-tools.html")],
+        ["map", "⌖", "Map", pageFile("map.html")],
       ];
     }
     return [
@@ -504,7 +372,7 @@
         <div class="drawer-brand">RENEWAL</div>
         <a href="${roleHome()}">☷ &nbsp; My workspace</a>
         ${currentRole === "wrapper" ? `<a href="${pageFile("giftWrap.html")}">🎁 &nbsp; Gift wrap tracker</a>` : ""}
-        ${currentRole === "admin" ? `<a href="${pageFile("admin-page.html")}">▮ &nbsp; Administrator dashboard</a><a href="${pageFile("analytics.html")}">◫ &nbsp; Analytics</a><a href="${pageFile("parkingmap.html")}">Ⓟ &nbsp; All parking spots</a>` : ""}
+        ${currentRole === "admin" ? `<a href="${pageFile("admin-page.html")}">▮ &nbsp; Operations dashboard</a><a href="${pageFile("analytics.html")}">◫ &nbsp; Statistics &amp; analytics</a><a href="${pageFile("admin-tools.html")}">⚙ &nbsp; Administrative tools</a><a href="${pageFile("parkingmap.html")}">Ⓟ &nbsp; All parking spots</a><a href="${pageFile("removedCar.html")}">▱ &nbsp; Delivered &amp; removed</a>` : ""}
         <a href="${pageFile("map.html")}">⌖ &nbsp; Parking lot map</a>
         <a href="${pageFile("help.html")}">? &nbsp; Help and app guide</a>
         <a href="${rootPrefix}roles.html">♙ &nbsp; Change role</a>
@@ -578,8 +446,10 @@
   function startPresence() {
     if (!state.user || !state.eventId) return;
     clearInterval(state.presenceTimer);
-    const path = `presence/${state.eventId}/${state.user.uid}/${state.sessionId}`;
+    if (state.presenceRef) state.presenceRef.onDisconnect().cancel();
+    const path = `presence/${state.eventId}/${state.user.uid}`;
     const ref = firebase.database().ref(path);
+    state.presenceRef = ref;
     const data = {
       online: true,
       uid: state.user.uid,
@@ -594,7 +464,7 @@
     ref.update(data);
     const historyRef = firebase
       .database()
-      .ref(`${eventPath("connections")}/${state.user.uid}/${state.sessionId}`);
+      .ref(`${eventPath("connections")}/${state.user.uid}`);
     historyRef.update({ ...data, firstConnectedAt: serverTime() });
     state.presenceTimer = setInterval(() => {
       ref.update({ online: true, lastSeen: serverTime(), page });
@@ -633,8 +503,9 @@
         state.removed = {};
         state.activity = {};
         state.presence = {};
-        state.volunteerCheckins = {};
-        state.checkInSettings = {};
+        state.vehicleSnapshotReady = false;
+        state.fetchReadySpots.clear();
+        clearTimeout(state.fetchReadyTimer);
         startPresence();
         onReady();
       });
@@ -647,17 +518,59 @@
       ["deliveries", "deliveries"],
       ["removed", "removed"],
       ["activity", "activity"],
-      ["volunteerCheckins", "volunteerCheckins"],
-      ["checkinSettings", "checkInSettings"],
     ];
     mappings.forEach(([child, key]) => {
       const ref = firebase.database().ref(eventPath(child));
       const handler = (snapshot) => {
-        state[key] = snapshot.val() || {};
+        const nextValue = snapshot.val() || {};
+        if (
+          key === "vehicles" &&
+          state.vehicleSnapshotReady &&
+          currentRole === "parking"
+        ) {
+          Object.entries(nextValue).forEach(([id, vehicle]) => {
+            const previous = state.vehicles[id];
+            if (
+              vehicle.status === "Fetch-to-shop" &&
+              previous?.status !== "Fetch-to-shop"
+            ) {
+              queueFetchReadySpot(vehicle.parkingSpot);
+            }
+          });
+        }
+        state[key] = nextValue;
+        if (key === "vehicles") state.vehicleSnapshotReady = true;
         callback(key);
       };
       listen(ref, "value", handler);
     });
+  }
+
+  function queueFetchReadySpot(parkingSpot) {
+    if (!parkingSpot) return;
+    state.fetchReadySpots.add(String(parkingSpot));
+    if (state.fetchReadyTimer) return;
+    state.fetchReadyTimer = setTimeout(showFetchReadyNotice, 10000);
+  }
+
+  function showFetchReadyNotice() {
+    state.fetchReadyTimer = null;
+    const spots = [...state.fetchReadySpots].sort(
+      (a, b) => Number(a) - Number(b),
+    );
+    state.fetchReadySpots.clear();
+    if (!spots.length || currentRole !== "parking") return;
+    document.getElementById("fetchReadyNotice")?.remove();
+    const notice = document.createElement("section");
+    notice.id = "fetchReadyNotice";
+    notice.className = "fetch-ready-notice";
+    notice.setAttribute("role", "alert");
+    notice.setAttribute("aria-live", "assertive");
+    const label = spots.length === 1 ? "Spot" : "Spots";
+    notice.innerHTML = `<button type="button" aria-label="Dismiss notification" onclick="this.parentElement.remove()">×</button><strong>Ready to be sent in</strong><p>${label} ${spots.map(esc).join(", ")} ${spots.length === 1 ? "is" : "are"} ready to be sent in.</p>`;
+    document.body.appendChild(notice);
+    clearTimeout(state.fetchNoticeTimer);
+    state.fetchNoticeTimer = setTimeout(() => notice.remove(), 15000);
   }
 
 
@@ -746,7 +659,6 @@
     return `<button type="button" class="vehicle-card status-${slug(vehicle.status)}" onclick="Renewal.openVehicle('${esc(vehicle.id)}')">
       <div class="card-top"><div><div class="spot-number">Spot #${esc(vehicle.parkingSpot)}</div><div class="car-number">${esc(vehicle.carNumber)}</div></div><span class="language-tag">${esc(vehicle.language || "N/A")}</span></div>
       <div class="card-bottom"><span class="status-label">${esc(vehicle.status)}</span><span class="wait-time">${formatDuration(vehicle.parkedAt)}</span></div>
-      ${vehicle.status === "Shopping" && vehicle.assignedShopperName ? `<div class="wait-time" style="margin-top:9px">Shopper: ${esc(vehicle.assignedShopperName)}</div>` : ""}
       ${vehicle.status === "Wrapping" ? `<div class="wait-time" style="margin-top:9px">${vehicle.bagCount ? `${esc(vehicle.completedBagCount || 0)}/${esc(vehicle.bagCount)} bags complete` : "Waiting for bag number"}</div>` : ""}
     </button>`;
   }
@@ -757,8 +669,7 @@
       parking: "Add vehicles and send arrived families to the next stage.",
       registration:
         "Fetch families, complete registration, and place them in the shopper queue.",
-      shopper:
-        "Check shoppers in, assign a waiting ticket, and track active shopping.",
+      shopper: "Move waiting families into Shopping and track active tickets.",
       wrapper: "Choose gift wrap or send no-wrap gifts directly to Reindeer.",
       reindeer:
         "Vehicles appear after every bag is complete or gift wrapping is marked unnecessary.",
@@ -781,7 +692,6 @@
         <p>${esc(descriptions[currentRole])}</p>
       </div>
       ${deliveryUndo}
-      ${currentRole === "shopper" ? `<section class="panel shopper-roster-panel"><div class="panel-heading"><div><h3>Shopper Availability</h3><p>Volunteers checked in through the kiosk appear here until their shift ends or an administrator checks them out.</p></div></div><div id="shopperRoster" class="shopper-roster"></div></section>` : ""}
       ${filterToolbar(extra)}
       <div class="card-grid" id="vehicleGrid"></div>
       <div id="modalRoot"></div>
@@ -791,7 +701,6 @@
 
     renderVehicleGrid();
     renderDeliveryUndo();
-    renderShopperRoster();
   }
 
   function renderVehicleGrid() {
@@ -917,125 +826,6 @@
     closeModal();
   }
 
-  function activeShopperEntries() {
-    return Object.entries(state.volunteerCheckins)
-      .map(([uid, item]) => ({ uid, ...item }))
-      .filter(
-        (item) =>
-          item.role === "shopper" &&
-          item.status !== "checked-out" &&
-          (!Number(item.shiftEndAt) || Number(item.shiftEndAt) > Date.now()),
-      )
-      .sort((a, b) =>
-        String(a.displayName || a.email).localeCompare(
-          String(b.displayName || b.email),
-        ),
-      );
-  }
-
-  function renderShopperRoster() {
-    const roster = document.getElementById("shopperRoster");
-    if (!roster) return;
-    const shoppers = activeShopperEntries();
-    roster.innerHTML = shoppers.length
-      ? shoppers
-        .map((shopper) => {
-          const status = shopper.status || "available";
-          return `<div class="shopper-chip shopper-${esc(status)}"><strong>${esc(shopper.displayName || shopper.email || "Shopper")}</strong><span>${esc(status.replace("-", " "))}</span>${shopper.currentCarNumber ? `<small>Ticket ${esc(shopper.currentCarNumber)}</small>` : `<small>${esc(shopper.timeSlotLabel || "Checked in")}</small>`}</div>`;
-        })
-        .join("")
-      : `<div class="empty-state compact">No shoppers are checked in.</div>`;
-  }
-
-  function openShopperAssignment(vehicleId) {
-    const vehicle = state.vehicles[vehicleId];
-    if (!vehicle || !["Awaiting Shopper", "Shopping"].includes(vehicle.status))
-      return;
-    const reassigning = vehicle.status === "Shopping";
-    const available = activeShopperEntries().filter(
-      (shopper) => shopper.status === "available",
-    );
-    document.getElementById("modalRoot").innerHTML = modal(
-      reassigning ? "Reassign Shopper" : "Assign a Shopper",
-      `
-      <div class="alert">Ticket <strong>${esc(vehicle.carNumber)}</strong> · Spot ${esc(vehicle.parkingSpot)}</div>
-      ${reassigning && vehicle.assignedShopperName ? `<p>Currently assigned to <strong>${esc(vehicle.assignedShopperName)}</strong>.</p>` : ""}
-      ${available.length ? `<form onsubmit="Renewal.assignShopper(event,'${esc(vehicleId)}')"><div class="field"><label>Available shopper</label><select class="select" name="shopperUid" required><option value="">Select a shopper</option>${available.map((shopper) => `<option value="${esc(shopper.uid)}">${esc(shopper.displayName || shopper.email)}</option>`).join("")}</select></div><div class="modal-actions"><button type="button" class="button secondary" onclick="Renewal.closeModal()">Cancel</button><button class="button success" type="submit">${reassigning ? "Reassign" : "Assign &amp; Start"}</button></div></form>` : `<div class="empty-state compact">No available shoppers. Have volunteers use the check-in kiosk or ask an administrator to confirm the roster.</div><button class="button secondary full" onclick="Renewal.closeModal()">Close</button>`}
-    `,
-    );
-    openModalElement();
-  }
-
-  async function assignShopper(event, vehicleId) {
-    event.preventDefault();
-    const vehicle = state.vehicles[vehicleId];
-    const shopperUid = String(
-      new FormData(event.currentTarget).get("shopperUid") || "",
-    );
-    const shopper = state.volunteerCheckins[shopperUid];
-    if (!vehicle || !["Awaiting Shopper", "Shopping"].includes(vehicle.status))
-      return alert("This ticket can no longer be assigned from this screen.");
-    if (!shopper || shopper.status !== "available")
-      return alert(
-        "That shopper is no longer available. Choose another shopper.",
-      );
-    const historyRef = firebase
-      .database()
-      .ref(`${eventPath("statusHistory")}/${vehicleId}`)
-      .push();
-    const activityRef = firebase.database().ref(eventPath("activity")).push();
-    const updates = {};
-    updates[`${eventPath("vehicles")}/${vehicleId}/status`] = "Shopping";
-    if (vehicle.status !== "Shopping")
-      updates[`${eventPath("vehicles")}/${vehicleId}/statusChangedAt`] =
-        serverTime();
-    updates[`${eventPath("vehicles")}/${vehicleId}/assignedShopperUid`] =
-      shopperUid;
-    updates[`${eventPath("vehicles")}/${vehicleId}/assignedShopperName`] =
-      shopper.displayName || shopper.email || "Shopper";
-    updates[`${eventPath("vehicles")}/${vehicleId}/shopperAssignedAt`] =
-      serverTime();
-    updates[`${eventPath("volunteerCheckins")}/${shopperUid}/status`] = "busy";
-    updates[
-      `${eventPath("volunteerCheckins")}/${shopperUid}/currentVehicleId`
-    ] = vehicleId;
-    updates[
-      `${eventPath("volunteerCheckins")}/${shopperUid}/currentCarNumber`
-    ] = vehicle.carNumber;
-    updates[`${eventPath("volunteerCheckins")}/${shopperUid}/lastSeen`] =
-      serverTime();
-    if (
-      vehicle.assignedShopperUid &&
-      vehicle.assignedShopperUid !== shopperUid
-    ) {
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/status`
-      ] = "available";
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/currentVehicleId`
-      ] = null;
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/currentCarNumber`
-      ] = null;
-    }
-    if (vehicle.status !== "Shopping")
-      updates[`${eventPath("statusHistory")}/${vehicleId}/${historyRef.key}`] =
-      {
-        from: vehicle.status,
-        status: "Shopping",
-        at: serverTime(),
-        by: state.user.uid,
-        shopperUid,
-      };
-    updates[`${eventPath("activity")}/${activityRef.key}`] = activity(
-      `${vehicle.status === "Shopping" ? "Reassigned" : "Assigned"} ${shopper.displayName || shopper.email || "shopper"}${vehicle.status === "Shopping" ? "" : " and started Shopping"}`,
-      { id: vehicleId, ...vehicle },
-      "Shopping",
-    );
-    await write(firebase.database().ref().update(updates));
-    closeModal();
-  }
-
   async function skipGiftWrap(id) {
     const vehicle = state.vehicles[id];
     if (currentRole !== "wrapper" || !vehicle || vehicle.status !== "Shopping")
@@ -1069,17 +859,6 @@
       { id, ...vehicle },
       "Waiting for Reindeer",
     );
-    if (vehicle.assignedShopperUid) {
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/status`
-      ] = "available";
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/currentVehicleId`
-      ] = null;
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/currentCarNumber`
-      ] = null;
-    }
     await write(firebase.database().ref().update(updates));
     closeModal();
   }
@@ -1089,6 +868,9 @@
       registration: {
         "In-Car": ["Fetch-to-shop", "Fetch for Registration"],
         "Fetch-to-shop": ["Awaiting Shopper", "Registration Complete"],
+      },
+      shopper: {
+        "Awaiting Shopper": ["Shopping", "Start Shopping"],
       },
     };
     return transitions[currentRole]?.[vehicle.status] || null;
@@ -1103,10 +885,6 @@
       currentRole === "reindeer" && vehicle.status === "Waiting for Reindeer";
     const wrapBlocked =
       currentRole === "wrapper" && vehicle.status === "Wrapping";
-    const shopperAssignment =
-      currentRole === "shopper" && vehicle.status === "Awaiting Shopper";
-    const shopperReassignment =
-      currentRole === "shopper" && vehicle.status === "Shopping";
     const wrapDecision =
       currentRole === "wrapper" && vehicle.status === "Shopping";
     const immutable = isAdmin ? "" : "disabled";
@@ -1175,24 +953,6 @@
         <button class="button success full" style="margin-top:10px"
           onclick="Renewal.advanceVehicle('${esc(id)}','${esc(next[0])}')">
           ${esc(next[1])}
-        </button>`
-        : ""
-      }
-
-      ${shopperAssignment
-        ? `
-        <button class="button success full" style="margin-top:10px"
-          onclick="Renewal.openShopperAssignment('${esc(id)}')">
-          Assign Shopper &amp; Start Shopping
-        </button>`
-        : ""
-      }
-
-      ${shopperReassignment
-        ? `
-        <button class="button ghost full" style="margin-top:10px"
-          onclick="Renewal.openShopperAssignment('${esc(id)}')">
-          Reassign Shopper
         </button>`
         : ""
       }
@@ -1350,24 +1110,6 @@
       { id, ...vehicle },
       status,
     );
-    if (
-      vehicle.status === "Shopping" &&
-      status !== "Shopping" &&
-      vehicle.assignedShopperUid
-    ) {
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/status`
-      ] = "available";
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/currentVehicleId`
-      ] = null;
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/currentCarNumber`
-      ] = null;
-      updates[
-        `${eventPath("volunteerCheckins")}/${vehicle.assignedShopperUid}/lastSeen`
-      ] = serverTime();
-    }
     await write(firebase.database().ref().update(updates));
   }
 
@@ -1862,18 +1604,15 @@
       `
       <div class="page-heading">
         <h2>Live Operations Dashboard</h2>
-        <p>Active event: <strong id="eventName">${esc(state.eventId || APP.defaultEventId)}</strong></p>
       </div>
 
-      <div class="toolbar">
-        <button class="button" onclick="Renewal.createFreshEvent()">＋ Start Fresh Event</button>
-        <a class="button ghost" href="${pageFile("parkingmap.html")}" style="text-decoration:none">View All 160 Spots</a>
-        <a class="button ghost" href="${pageFile("analytics.html")}" style="text-decoration:none">Open Analytics</a>
-        <button class="button ghost" onclick="Renewal.openInstances()">Connected Instances</button>
-        <button class="button success" onclick="Renewal.launchVolunteerCheckin()">Volunteer Check-In Kiosk</button>
-        <button class="button ghost" onclick="Renewal.openShiftSettings()">Edit Check-In Times</button>
+      <div class="admin-launcher-grid">
+        <a class="admin-launcher-card active" href="${pageFile("admin-page.html")}"><span>▮</span><strong>Live Operations</strong><small>Current totals, statuses, and activity</small></a>
+        <a class="admin-launcher-card" href="${pageFile("analytics.html")}"><span>◫</span><strong>Statistics &amp; Analytics</strong><small>Timing, throughput, and gift-wrap data</small></a>
+        <a class="admin-launcher-card" href="${pageFile("admin-tools.html")}"><span>⚙</span><strong>Administrative Tools</strong><small>Users, synchronization, and events</small></a>
       </div>
 
+      <div class="event-banner">Active event: <strong>${esc(state.eventId || APP.defaultEventId)}</strong></div>
       <div class="metrics-grid" id="metrics"></div>
 
       <div class="dashboard-grid">
@@ -1882,28 +1621,8 @@
           <div id="statusBreakdown"></div>
         </section>
         <section class="panel">
-          <div class="panel-heading"><h3>Synchronization</h3><button class="button ghost small" onclick="Renewal.openInstances()">View All</button></div>
-          <div id="syncSummary"></div>
-          <div class="device-list" id="deviceList"></div>
-        </section>
-        <section class="panel">
           <h3>Recent Activity</h3>
           <div class="activity-list" id="activityList"></div>
-        </section>
-        <section class="panel">
-          <h3>User Access</h3>
-          <p style="color:var(--muted);font-size:.82rem">
-            Google users appear here after signing in once. Check the roles they may access.
-          </p>
-          <div class="user-admin-list" id="userList"></div>
-        </section>
-        <section class="panel wide">
-          <div class="panel-heading"><div><h3>Volunteer Check-Ins</h3><p>Shopper availability expires automatically at the end of the selected shift.</p></div><button class="button ghost small" onclick="Renewal.openShiftSettings()">Edit Times</button></div>
-          <div class="volunteer-admin-list" id="volunteerCheckinList"></div>
-        </section>
-        <section class="panel wide">
-          <div class="panel-heading"><div><h3>Previous Events</h3><p>Open an event for its users, workflow totals, timing, and gift-wrap analytics.</p></div></div>
-          <div class="event-list" id="eventList"></div>
         </section>
       </div>
 
@@ -1912,6 +1631,54 @@
       "list",
     );
     renderAdminData();
+  }
+
+  function renderAdminToolsPage() {
+    renderAppShell(
+      "Administrative Tools",
+      `
+      <div class="page-heading">
+        <h2>Administrative Tools</h2>
+        <p>Manage access, connected users, and event history in one place.</p>
+      </div>
+
+      <div class="admin-launcher-grid">
+        <a class="admin-launcher-card" href="${pageFile("admin-page.html")}"><span>▮</span><strong>Live Operations</strong><small>Current totals, statuses, and activity</small></a>
+        <a class="admin-launcher-card" href="${pageFile("analytics.html")}"><span>◫</span><strong>Statistics &amp; Analytics</strong><small>Timing, throughput, and gift-wrap data</small></a>
+        <a class="admin-launcher-card active" href="${pageFile("admin-tools.html")}"><span>⚙</span><strong>Administrative Tools</strong><small>Users, synchronization, and events</small></a>
+      </div>
+
+      <div class="admin-tools-grid">
+        <section class="panel">
+          <div class="panel-heading"><div><h3>Synchronization</h3><p>Each signed-in user appears once, showing their most recent role and page.</p></div><button class="button ghost small" onclick="Renewal.openInstances()">View All</button></div>
+          <div id="syncSummary"></div>
+          <div class="device-list" id="deviceList"></div>
+        </section>
+        <section class="panel">
+          <h3>User Access</h3>
+          <p class="admin-section-copy">Google users appear after signing in once. Select the roles each person may access.</p>
+          <div class="user-admin-list" id="userList"></div>
+        </section>
+        <section class="panel wide">
+          <div class="panel-heading"><div><h3>Events</h3><p>Start a new event or inspect and remove previous events.</p></div><button class="button" onclick="Renewal.createFreshEvent()">＋ Start Fresh Event</button></div>
+          <div class="event-list" id="eventList"></div>
+        </section>
+        <section class="panel wide">
+          <h3>System Shortcuts</h3>
+          <div class="toolbar"><a class="button ghost" href="${pageFile("parkingmap.html")}">View All ${APP.totalSpots} Spots</a><a class="button ghost" href="${pageFile("removedCar.html")}">Delivered &amp; Removed History</a></div>
+        </section>
+      </div>
+      <div id="modalRoot"></div>
+    `,
+      "tools",
+    );
+    renderAdminToolsData();
+  }
+
+  function renderAdminToolsData() {
+    renderPresence();
+    renderUsers();
+    renderEventList();
   }
 
   function averageDuration(items, endField) {
@@ -1929,9 +1696,14 @@
       "Analytics",
       `
       <div class="page-heading analytics-heading">
-        <a class="back-link" href="${pageFile("admin-page.html")}">← Dashboard</a>
         <h2>Event Analytics</h2>
         <p>Live timing and throughput for the active Christmas Store event.</p>
+      </div>
+
+      <div class="admin-launcher-grid">
+        <a class="admin-launcher-card" href="${pageFile("admin-page.html")}"><span>▮</span><strong>Live Operations</strong><small>Current totals, statuses, and activity</small></a>
+        <a class="admin-launcher-card active" href="${pageFile("analytics.html")}"><span>◫</span><strong>Statistics &amp; Analytics</strong><small>Timing, throughput, and gift-wrap data</small></a>
+        <a class="admin-launcher-card" href="${pageFile("admin-tools.html")}"><span>⚙</span><strong>Administrative Tools</strong><small>Users, synchronization, and events</small></a>
       </div>
 
       <section class="panel analytics-panel">
@@ -2119,122 +1891,51 @@
         )
         .join("")
       : `<div class="empty-state" style="padding:18px">No activity yet.</div>`;
-    renderPresence();
-    renderUsers();
-    renderVolunteerCheckins();
-    renderEventList();
   }
 
   function metric(label, value) {
     return `<div class="metric"><span class="metric-label">${esc(label)}</span><strong class="metric-value">${esc(value)}</strong></div>`;
   }
 
-  function renderVolunteerCheckins() {
-    const list = document.getElementById("volunteerCheckinList");
-    if (!list) return;
-    const checkins = Object.entries(state.volunteerCheckins)
-      .map(([id, item]) => ({ id, ...item }))
-      .sort((a, b) => Number(b.checkedInAt || 0) - Number(a.checkedInAt || 0));
-    list.innerHTML = checkins.length
-      ? checkins
-        .map((item) => {
-          const ended = Number(item.shiftEndAt) && Number(item.shiftEndAt) <= Date.now();
-          const displayStatus = ended && item.status !== "checked-out" ? "shift ended" : String(item.status || "checked-in").replace("-", " ");
-          return `<article class="volunteer-row"><div><strong>${esc(item.displayName || "Volunteer")}</strong><small>${esc(APP.roleLabels[item.role] || item.role || "Volunteer")} · ${esc(item.timeSlotLabel || "No time slot")}</small></div><span class="volunteer-status shopper-${esc(slug(displayStatus))}">${esc(displayStatus)}</span><div class="event-actions">${item.status === "checked-out" ? "" : `<button class="button danger small" onclick="Renewal.updateVolunteerCheckinStatus('${esc(item.id)}','checked-out')">Check Out</button>`}</div></article>`;
-        })
-        .join("")
-      : `<div class="empty-state compact">No volunteers have used the check-in kiosk for this event.</div>`;
-  }
-
-  function openShiftSettings() {
-    const shifts = currentShiftOptions();
-    const dayOptions = [
-      [5, "Friday"],
-      [6, "Saturday"],
-    ];
-    document.getElementById("modalRoot").innerHTML = modal(
-      "Volunteer Check-In Times",
-      `<p class="modal-copy">These options appear on the kiosk. Shopper availability automatically ends at the configured end time.</p><form onsubmit="Renewal.saveShiftSettings(event)"><div class="shift-editor">${Object.entries(shifts)
-        .map(
-          ([id, shift]) => `<fieldset class="shift-row"><legend>${esc(shift.label)}</legend><input type="hidden" name="shiftId" value="${esc(id)}"><div class="form-grid two"><div class="field"><label>Display label</label><input class="input" name="label_${esc(id)}" value="${esc(shift.label)}" maxlength="80" required></div><div class="field"><label>Day</label><select class="select" name="day_${esc(id)}">${dayOptions.map(([day, label]) => `<option value="${day}"${Number(shift.dayOfWeek) === day ? " selected" : ""}>${label}</option>`).join("")}</select></div><div class="field"><label>Start</label><input class="input" type="time" name="start_${esc(id)}" value="${esc(shift.start)}" required></div><div class="field"><label>End</label><input class="input" type="time" name="end_${esc(id)}" value="${esc(shift.end)}" required></div></div></fieldset>`,
-        )
-        .join("")}</div><div class="modal-actions"><button type="button" class="button secondary" onclick="Renewal.closeModal()">Cancel</button><button class="button" type="submit">Save Times</button></div></form>`,
-    );
-    openModalElement();
-  }
-
-  async function saveShiftSettings(event) {
-    event.preventDefault();
-    if (currentRole !== "admin") return;
-    const form = new FormData(event.currentTarget);
-    const shifts = {};
-    form.getAll("shiftId").forEach((id) => {
-      shifts[id] = {
-        label: String(form.get(`label_${id}`) || "").trim(),
-        dayOfWeek: Number(form.get(`day_${id}`)),
-        start: String(form.get(`start_${id}`) || ""),
-        end: String(form.get(`end_${id}`) || ""),
-      };
-    });
-    if (Object.values(shifts).some((shift) => !shift.label || !shift.start || !shift.end || shift.start >= shift.end)) {
-      return alert("Each shift needs a label and an end time later than its start time.");
-    }
-    await write(firebase.database().ref(`${eventPath("checkinSettings")}/timeSlots`).set(shifts));
-    closeModal();
-  }
-
-  async function updateVolunteerCheckinStatus(id, status) {
-    if (currentRole !== "admin" || status !== "checked-out") return;
-    const item = state.volunteerCheckins[id];
-    if (!item) return;
-    if (item.status === "busy" && status === "checked-out" && !confirm(`${item.displayName || "This shopper"} is assigned to ticket ${item.currentCarNumber || "unknown"}. Check them out anyway?`)) return;
-    await write(
-      firebase.database().ref(`${eventPath("volunteerCheckins")}/${id}`).update({
-        status,
-        checkedOutAt: status === "checked-out" ? serverTime() : null,
-        currentVehicleId: status === "checked-out" ? null : item.currentVehicleId || null,
-        currentCarNumber: status === "checked-out" ? null : item.currentCarNumber || null,
-      }),
-    );
-  }
-
   function renderPresence() {
-    const sessions = [];
-    Object.values(state.presence || {}).forEach((userSessions) =>
-      Object.values(userSessions || {}).forEach((item) => sessions.push(item)),
-    );
-    sessions.sort(
-      (a, b) =>
-        Number(b.online) - Number(a.online) ||
-        Number(b.lastSeen) - Number(a.lastSeen),
-    );
-    const online = sessions.filter(
+    const users = presenceSessions();
+    const online = users.filter(
       (item) => item.online && Date.now() - Number(item.lastSeen || 0) < 90000,
     );
     const summary = document.getElementById("syncSummary");
     const list = document.getElementById("deviceList");
     if (summary)
-      summary.innerHTML = `<div class="alert ${online.length ? "success" : "error"}"><strong>${online.length} device${online.length === 1 ? "" : "s"} online</strong><br>All active browser instances report here.</div>`;
+      summary.innerHTML = `<div class="alert ${online.length ? "success" : "error"}"><strong>${online.length} user${online.length === 1 ? "" : "s"} online</strong><br>One current connection is shown for each signed-in user.</div>`;
     if (list)
       list.innerHTML =
-        sessions
+        users
           .slice(0, 4)
           .map(
             (item) =>
-              `<div class="device-item"><strong>${item.online ? "● Online" : "○ Offline"} · ${esc(APP.roleLabels[item.role] || item.role || "Viewer")}</strong><span>${esc(item.displayName || item.email || "Unknown device")}</span><small>${esc(item.page || "page")} · Last seen ${formatDate(item.lastSeen)}</small></div>`,
+              `<div class="device-item"><strong>${item.online && Date.now() - Number(item.lastSeen || 0) < 90000 ? "● Online" : "○ Outdated"} · ${esc(APP.roleLabels[item.role] || item.role || "Viewer")}</strong><span>${esc(item.displayName || item.email || "Unknown user")}</span><small>${esc(item.page || "page")} · Last seen ${formatDate(item.lastSeen)}</small></div>`,
           )
           .join("") ||
-        `<div class="empty-state" style="padding:18px">No devices have connected.</div>`;
+        `<div class="empty-state" style="padding:18px">No users have connected.</div>`;
   }
 
   function presenceSessions() {
-    const sessions = [];
-    Object.entries(state.presence || {}).forEach(([uid, userSessions]) =>
-      Object.entries(userSessions || {}).forEach(([sessionId, item]) =>
-        sessions.push({ uid, sessionId, ...item }),
-      ),
-    );
-    return sessions.sort(
+    const users = [];
+    Object.entries(state.presence || {}).forEach(([uid, value]) => {
+      if (value && Object.prototype.hasOwnProperty.call(value, "lastSeen")) {
+        users.push({ uid, path: `presence/${state.eventId}/${uid}`, ...value });
+        return;
+      }
+      const legacy = Object.entries(value || {})
+        .map(([sessionId, item]) => ({
+          uid,
+          sessionId,
+          path: `presence/${state.eventId}/${uid}/${sessionId}`,
+          ...item,
+        }))
+        .sort((a, b) => Number(b.lastSeen || 0) - Number(a.lastSeen || 0));
+      if (legacy[0]) users.push(legacy[0]);
+    });
+    return users.sort(
       (a, b) =>
         Number(b.online) - Number(a.online) ||
         Number(b.lastSeen) - Number(a.lastSeen),
@@ -2242,31 +1943,17 @@
   }
 
   function openInstances() {
-    const sessions = presenceSessions();
-    const byUser = new Map();
-    sessions.forEach((item) => {
-      if (!byUser.has(item.uid)) byUser.set(item.uid, []);
-      byUser.get(item.uid).push(item);
-    });
+    const users = presenceSessions();
     document.getElementById("modalRoot").innerHTML = modal(
-      "Connected Instances",
+      "Connected Users",
       `
-      <div class="modal-toolbar"><p>${byUser.size} user${byUser.size === 1 ? "" : "s"} · ${sessions.length} browser instance${sessions.length === 1 ? "" : "s"}</p><button class="button danger small" onclick="Renewal.resetInstanceTracker()">Clear Outdated Instances</button></div>
-      <div class="instance-user-list">${byUser.size
-        ? [...byUser.entries()]
-          .map(
-            ([uid, items]) =>
-              `<section class="instance-user"><h3>${esc(items[0].displayName || items[0].email || state.users[uid]?.displayName || "Unknown user")}</h3><small>${esc(items[0].email || state.users[uid]?.email || uid)}</small>${items
-                .map((item) => {
-                  const live =
-                    item.online &&
-                    Date.now() - Number(item.lastSeen || 0) < 90000;
-                  return `<div class="device-item"><strong>${live ? "● Online" : "○ Outdated"} · ${esc(APP.roleLabels[item.role] || item.role || "Viewer")}</strong><span>${esc(item.page || "page")}</span><small>Connected ${formatDate(item.connectedAt)} · Last seen ${formatDate(item.lastSeen)}</small></div>`;
-                })
-                .join("")}</section>`,
-          )
-          .join("")
-        : `<div class="empty-state compact">No tracked instances.</div>`
+      <div class="modal-toolbar"><p>${users.length} tracked user${users.length === 1 ? "" : "s"}</p><button class="button danger small" onclick="Renewal.resetInstanceTracker()">Clear Outdated Users</button></div>
+      <div class="instance-user-list">${users.length
+        ? users.map((item) => {
+          const live = item.online && Date.now() - Number(item.lastSeen || 0) < 90000;
+          return `<section class="instance-user"><h3>${esc(item.displayName || item.email || state.users[item.uid]?.displayName || "Unknown user")}</h3><small>${esc(item.email || state.users[item.uid]?.email || item.uid)}</small><div class="device-item"><strong>${live ? "● Online" : "○ Outdated"} · ${esc(APP.roleLabels[item.role] || item.role || "Viewer")}</strong><span>${esc(item.page || "page")}</span><small>Connected ${formatDate(item.connectedAt)} · Last seen ${formatDate(item.lastSeen)}</small></div></section>`;
+        }).join("")
+        : `<div class="empty-state compact">No tracked users.</div>`
       }</div>
       <button class="button secondary full" onclick="Renewal.closeModal()">Close</button>
     `,
@@ -2280,16 +1967,16 @@
         !item.online || Date.now() - Number(item.lastSeen || 0) >= 90000,
     );
     if (!stale.length)
-      return alert("There are no outdated instances to clear.");
+      return alert("There are no outdated users to clear.");
     if (
       !confirm(
-        `Remove ${stale.length} outdated instance connection${stale.length === 1 ? "" : "s"}? Active devices will remain.`,
+        `Remove ${stale.length} outdated user connection${stale.length === 1 ? "" : "s"}? Active users will remain.`,
       )
     )
       return;
     const updates = {};
     stale.forEach((item) => {
-      updates[`presence/${state.eventId}/${item.uid}/${item.sessionId}`] = null;
+      updates[item.path] = null;
     });
     await write(firebase.database().ref().update(updates));
     closeModal();
@@ -2300,7 +1987,6 @@
     const deliveries = Object.values(eventData.deliveries || {});
     const removed = Object.values(eventData.removed || {});
     const bags = Object.values(eventData.bags || {});
-    const volunteerCheckins = Object.values(eventData.volunteerCheckins || {});
     const completedBags = bags.filter((bag) => bag.status === "completed");
     const bagDurations = completedBags
       .map((bag) => Number(bag.completedAt) - Number(bag.assignedAt))
@@ -2312,9 +1998,16 @@
       ...removed.map((item) => Number(item.removedAt) - Number(item.parkedAt)),
     ].filter((value) => Number.isFinite(value) && value >= 0);
     const connections = [];
-    Object.values(eventData.connections || {}).forEach((items) =>
-      Object.values(items || {}).forEach((item) => connections.push(item)),
-    );
+    Object.entries(eventData.connections || {}).forEach(([uid, value]) => {
+      if (value && Object.prototype.hasOwnProperty.call(value, "lastSeen")) {
+        connections.push({ uid, ...value });
+        return;
+      }
+      const latest = Object.values(value || {}).sort(
+        (a, b) => Number(b?.lastSeen || 0) - Number(a?.lastSeen || 0),
+      )[0];
+      if (latest && typeof latest === "object") connections.push({ uid, ...latest });
+    });
     return {
       eventId,
       name: eventData.meta?.name || eventId,
@@ -2334,7 +2027,6 @@
       connections,
       uniqueUsers: new Set(connections.map((item) => item.uid).filter(Boolean))
         .size,
-      volunteerCheckins,
       eventData,
     };
   }
@@ -2381,7 +2073,6 @@
       <section class="modal-section"><h3>Workflow Statuses</h3><div class="analytics-status-list">${statusCounts.map((row) => `<div class="analytics-status-row status-${slug(row.status)}"><span><i></i>${esc(row.status)}</span><strong>${row.count}</strong></div>`).join("")}</div></section>
       <section class="modal-section"><h3>Gift Wrap</h3><div class="metrics-grid">${metric("Completed Bags", item.completedBags)}${metric("Avg. Bag Time", item.avgBag ? formatDuration(Date.now() - item.avgBag) : "—")}${metric("Archived Vehicles", groupBagsByVehicle(Object.values(data.bags || {}).filter((bag) => bag.archived)).length)}${metric("Admin Removed", item.removed)}</div></section>
       <section class="modal-section"><h3>People Connected</h3><div class="device-list">${people.length ? people.map((person) => `<div class="device-item"><strong>${esc(person.displayName || person.email || "Volunteer")}</strong><span>${esc(APP.roleLabels[person.role] || person.role || "Viewer")}</span><small>Last seen ${formatDate(person.lastSeen)}</small></div>`).join("") : `<div class="empty-state compact">No connection history was recorded for this event.</div>`}</div></section>
-      <section class="modal-section"><h3>Volunteer Check-Ins (${item.volunteerCheckins.length})</h3><div class="device-list">${item.volunteerCheckins.length ? item.volunteerCheckins.map((person) => `<div class="device-item"><strong>${esc(person.displayName || "Volunteer")}</strong><span>${esc(APP.roleLabels[person.role] || person.role || "Volunteer")} · ${esc(person.timeSlotLabel || "No time slot")}</span><small>${esc(String(person.status || "checked-in").replace("-", " "))}</small></div>`).join("") : `<div class="empty-state compact">No volunteer check-ins were recorded.</div>`}</div></section>
       <button class="button secondary full" onclick="Renewal.closeModal()">Close</button>
     `,
     );
@@ -2479,19 +2170,19 @@
     const presenceRef = firebase.database().ref(`presence/${state.eventId}`);
     const presenceHandler = (snapshot) => {
       state.presence = snapshot.val() || {};
-      renderAdminData();
+      renderAdminToolsData();
     };
     listen(presenceRef, "value", presenceHandler);
     const usersRef = firebase.database().ref("users");
     const usersHandler = (snapshot) => {
       state.users = snapshot.val() || {};
-      renderAdminData();
+      renderAdminToolsData();
     };
     listen(usersRef, "value", usersHandler);
     const eventsRef = firebase.database().ref("events");
     const eventsHandler = (snapshot) => {
       state.allEvents = snapshot.val() || {};
-      renderAdminData();
+      renderAdminToolsData();
     };
     listen(eventsRef, "value", eventsHandler);
   }
@@ -2656,7 +2347,7 @@
         <div class="help-role-grid">
           <div class="glass-card"><b>🚗 Parking Management</b><p><b>For all parking lot attendants.</b> Add new vehicles, assign the correct parking spot and preferred language, update details when needed, and keep parking records accurate throughout the event.</p></div>
           <div class="glass-card"><b>✅ Registration</b><p><b>For Registration Assistants.</b> Fetch families who are waiting in their cars, complete registration, and mark the ticket as Awaiting Shopper so the shopping lead knows it is ready.</p></div>
-          <div class="glass-card"><b>🛒 Shopper</b><p><b>For Shopping Gate Keepers and Shoppers.</b> Check shoppers in, assign an available shopper to a ticket, and move the family into Shopping. Check out at the end of a shift so the availability list stays accurate.</p></div>
+          <div class="glass-card"><b>🛒 Shopper</b><p><b>For Shopping Gate Keepers and Shoppers.</b> Move a registered family from Awaiting Shopper into Shopping and track active tickets through the shopping stage.</p></div>
           <div class="glass-card"><b>🎁 Wrapping Team</b><p><b>For Wrapping Gate Keepers and Wrapping Assistants.</b> Choose whether gifts need wrapping, assign bags to workstations, and mark each bag complete before the ticket moves to Reindeer.</p></div>
           <div class="glass-card"><b>🦌 Reindeer (Delivery Team)</b><p><b>For Reindeer volunteers in the wrapping area.</b> Confirm completed gifts are delivered to the correct vehicle. This finishes the ticket and removes the car from the active list.</p></div>
         </div>
@@ -2679,10 +2370,10 @@
   function onCoreUpdate(key) {
     if (page === "vehicles") {
       renderVehicleGrid();
-      renderShopperRoster();
       if (key === "deliveries") renderDeliveryUndo();
     } else if (page === "gift-wrap") renderWrapData();
     else if (page === "admin") renderAdminData();
+    else if (page === "admin-tools") renderAdminToolsData();
     else if (page === "analytics") renderAnalyticsData();
     else if (page === "spots") renderSpots();
     else if (page === "history") renderHistoryData();
@@ -2694,17 +2385,19 @@
       if (page === "vehicles") renderVehiclePage();
       else if (page === "gift-wrap") renderGiftWrapPage();
       else if (page === "admin") renderAdminPage();
+      else if (page === "admin-tools") renderAdminToolsPage();
       else if (page === "analytics") renderAnalyticsPage();
       else if (page === "spots") renderSpotsPage();
       else if (page === "history") renderHistoryPage();
       else if (page === "map") renderMapPage();
       else if (page === "help") renderHelpPage();
       listenCore(onCoreUpdate);
-      if (page === "admin") listenAdminExtras();
+      if (page === "admin-tools") listenAdminExtras();
       clearInterval(state.clockTimer);
       state.clockTimer = setInterval(() => {
         if (page === "vehicles") renderVehicleGrid();
         if (page === "admin") renderAdminData();
+        if (page === "admin-tools") renderAdminToolsData();
         if (page === "analytics") renderAnalyticsData();
       }, 60000);
     });
@@ -2722,10 +2415,6 @@
   async function start() {
     if (page === "home") return renderHome();
     initFirebase();
-    if (page === "checkin") {
-      await initializeVolunteerCheckin();
-      return;
-    }
     if (page === "login") {
       renderLogin();
       firebase.auth().onAuthStateChanged(async (user) => {
@@ -2820,18 +2509,11 @@
     archiveCompletedWrap,
     updateUserRole,
     createFreshEvent,
-    openShopperAssignment,
-    assignShopper,
     skipGiftWrap,
     openInstances,
     resetInstanceTracker,
     openEventDetails,
     deleteEvent,
-    launchVolunteerCheckin,
-    submitVolunteerCheckin,
-    openShiftSettings,
-    saveShiftSettings,
-    updateVolunteerCheckinStatus,
     showMapPlaceholder,
     showAssetPlaceholder,
   };
