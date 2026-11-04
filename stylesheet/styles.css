@@ -2157,3 +2157,58 @@ a {
 .bottom-nav {
   bottom: var(--mobile-browser-bottom, 0px) !important;
 }
+
+@media (max-width: 600px) {
+  .page-home .hero-page,
+  .page-home .hero-card {
+    width: 100%;
+    min-height: 100svh;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  .page-home .hero-card {
+    justify-content: flex-start;
+    padding: 28px 18px;
+  }
+
+  .page-home .hero-content {
+    width: 100%;
+  }
+
+  .page-home .logo-slot img {
+    max-height: 70px;
+  }
+
+  .page-home .brand-name {
+    font-size: 1.1rem;
+  }
+
+  .page-home .brand-sub {
+    font-size: 0.65rem;
+  }
+
+  .page-home .hero-title {
+    margin: 16px 0 8px;
+    font-size: clamp(1.65rem, 8vw, 2.25rem);
+    line-height: 1.05;
+  }
+
+  .page-home .hero-copy {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .page-home .hero-photo {
+    height: 42%;
+  }
+
+  .page-home .hero-button {
+    position: absolute;
+    left: 50%;
+    bottom: max(70px, 10svh);
+    z-index: 10;
+    width: min(82%, 340px);
+    transform: translateX(-50%);
+  }
+}

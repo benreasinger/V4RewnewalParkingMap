@@ -160,7 +160,7 @@
         <div class="hero-card">
           <div class="hero-content">
             <div class="asset-slot logo-slot">
-              <img class="brand-logo-image" src="assets/renewal-logo.png" alt="Renewal Neighborhood Church logo" onerror="Renewal.showAssetPlaceholder(this)">
+              <img class="brand-logo-image" src="assets/renewal-logo.PNG" alt="Renewal Neighborhood Church logo" onerror="Renewal.showAssetPlaceholder(this)">
               <div class="asset-fallback logo-fallback" hidden><span>✚</span><small>renewal-logo.png</small></div>
             </div>
             <div class="brand-name">RENEWAL</div>
@@ -203,7 +203,7 @@
       `
       <section class="role-page"><div class="role-shell">
         <div class="role-brand">
-          <div class="asset-slot role-logo-slot"><img src="assets/renewal-logo.png" alt="Renewal Neighborhood Church logo" onerror="Renewal.showAssetPlaceholder(this)"><div class="asset-fallback mini-logo-fallback" hidden>✚</div></div>
+          <div class="asset-slot role-logo-slot"><img src="assets/renewal-logo.PNG" alt="Renewal Neighborhood Church logo" onerror="Renewal.showAssetPlaceholder(this)"><div class="asset-fallback mini-logo-fallback" hidden>✚</div></div>
           <div><div class="brand-name">RENEWAL</div><div class="brand-sub">NEIGHBORHOOD MINISTRY</div></div>
         </div>
         <div class="page-heading" style="text-align:center"><h2>Choose Your Role</h2><p>Signed in as ${esc(state.user?.email || "")}</p></div>
@@ -2309,7 +2309,7 @@
         <p>Use this map to direct volunteers and families to the correct area.</p>
       </div>
       <div class="map-frame">
-        <img class="map-image" id="parkingLotMap" src="../assets/parking-lot-map.png"
+        <img class="map-image" id="parkingLotMap" src="assets/parking-lot-map.png"
           alt="Renewal parking lot map" onerror="Renewal.showMapPlaceholder()">
         
       </div>
@@ -2478,7 +2478,6 @@ updateMobileBottomNav();
       return;
     }
 
-    // INJECTED HTML -> temporary loading state on any protected page.
     injectApp(
       "protected page / loading",
       `
