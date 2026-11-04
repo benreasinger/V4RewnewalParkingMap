@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 520" role="img" aria-label="Purple floral decoration">
+  <g fill="none" stroke="#62236f" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M315 505C235 425 198 343 178 247C164 177 133 105 54 30" stroke-width="10"/>
+    <path d="M202 338C252 320 289 282 306 230" stroke-width="7"/>
+    <path d="M165 220C113 207 78 174 59 126" stroke-width="7"/>
+    <path d="M240 409C281 402 318 376 340 341" stroke-width="7"/>
+  </g>
+  <g fill="#8e5a99" opacity=".9">
+    <ellipse cx="284" cy="270" rx="23" ry="52" transform="rotate(43 284 270)"/>
+    <ellipse cx="120" cy="179" rx="21" ry="49" transform="rotate(-51 120 179)"/>
+    <ellipse cx="310" cy="369" rx="22" ry="50" transform="rotate(55 310 369)"/>
+    <ellipse cx="91" cy="91" rx="18" ry="43" transform="rotate(-39 91 91)"/>
+  </g>
+  <g fill="#62236f">
+    <circle cx="47" cy="28" r="16"/><circle cx="27" cy="48" r="15"/><circle cx="67" cy="49" r="15"/><circle cx="47" cy="68" r="15"/><circle cx="47" cy="48" r="12" fill="#f1e9f3"/>
+    <circle cx="309" cy="216" r="14"/><circle cx="292" cy="233" r="13"/><circle cx="326" cy="233" r="13"/><circle cx="309" cy="250" r="13"/><circle cx="309" cy="233" r="10" fill="#f1e9f3"/>
+  </g>
+</svg>

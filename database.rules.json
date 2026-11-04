@@ -3,21 +3,22 @@
     ".read": false,
     ".write": false,
     "config": {
-      ".read": "auth != null",
       "activeEventId": {
-        ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
+        ".read": "auth != null",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
+        ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
       }
     },
     "users": {
       ".read": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
       "$uid": {
         ".read": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)",
-        "uid": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
-        "email": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
-        "displayName": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
-        "photoURL": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
-        "createdAt": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
-        "lastLoginAt": { ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "uid": { ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "email": { ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "displayName": { ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "photoURL": { ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "createdAt": { ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
+        "lastLoginAt": { ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)" },
         "roles": {
           ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
         },
@@ -25,14 +26,27 @@
       }
     },
     "events": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
       "$eventId": {
-        ".read": "auth != null && root.child('users').child(auth.uid).child('roles').hasChildren()",
+        ".read": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && (root.child('users').child(auth.uid).child('roles').child('admin').val() == true || ($eventId == root.child('config').child('activeEventId').val() && root.child('users').child(auth.uid).child('roles').hasChildren()))",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
         "meta": {
           ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
         },
+        "checkinSettings": {
+          ".read": "auth != null && (auth.token.firebase.sign_in_provider == 'anonymous' || root.child('users').child(auth.uid).child('roles').hasChildren())",
+          ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true"
+        },
+        "volunteerCheckins": {
+          "$checkinId": {
+            ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('admin').val() == true || root.child('users').child(auth.uid).child('roles').child('shopper').val() == true || root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true || (auth.token.firebase.sign_in_provider == 'anonymous' && !data.exists() && newData.exists() && newData.child('createdByAnonymousUid').val() == auth.uid))",
+            ".validate": "!newData.exists() || (newData.hasChildren(['firstName','lastName','displayName','role','timeSlotId','timeSlotLabel','status','checkedInAt','shiftEndAt','createdByAnonymousUid']) && newData.child('firstName').isString() && newData.child('firstName').val().length > 0 && newData.child('firstName').val().length <= 50 && newData.child('lastName').isString() && newData.child('lastName').val().length > 0 && newData.child('lastName').val().length <= 50 && newData.child('displayName').isString() && newData.child('displayName').val().length > 0 && newData.child('displayName').val().length <= 105 && (newData.child('role').val() == 'parking' || newData.child('role').val() == 'registration' || newData.child('role').val() == 'shopper' || newData.child('role').val() == 'wrapper' || newData.child('role').val() == 'reindeer') && newData.child('timeSlotId').isString() && newData.child('timeSlotLabel').isString() && newData.child('timeSlotLabel').val().length <= 80 && (newData.child('status').val() == 'checked-in' || newData.child('status').val() == 'available' || newData.child('status').val() == 'busy' || newData.child('status').val() == 'break' || newData.child('status').val() == 'checked-out') && newData.child('checkedInAt').isNumber() && newData.child('shiftEndAt').isNumber() && newData.child('createdByAnonymousUid').isString())"
+          }
+        },
         "vehicles": {
           "$vehicleId": {
-            ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('admin').val() == true || (!data.exists() && newData.exists() && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || (root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true && newData.child('status').val() == 'Waiting for Reindeer'))) || (data.exists() && newData.exists() && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || root.child('users').child(auth.uid).child('roles').child('shopper').val() == true || root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true)) || (data.exists() && !newData.exists() && root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true && data.child('status').val() == 'Waiting for Reindeer'))"
+            ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && (root.child('users').child(auth.uid).child('roles').child('admin').val() == true || (!data.exists() && newData.exists() && ((root.child('users').child(auth.uid).child('roles').child('parking').val() == true && newData.child('status').val() == 'In-Car') || (root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true && newData.child('status').val() == 'Waiting for Reindeer'))) || (data.exists() && !newData.exists() && root.child('users').child(auth.uid).child('roles').child('reindeer').val() == true && data.child('status').val() == 'Waiting for Reindeer') || (data.exists() && newData.exists() && newData.child('carNumber').val() == data.child('carNumber').val() && newData.child('parkingSpot').val() == data.child('parkingSpot').val() && newData.child('language').val() == data.child('language').val() && newData.child('parkedAt').val() == data.child('parkedAt').val() && ((root.child('users').child(auth.uid).child('roles').child('parking').val() == true && newData.child('status').val() == data.child('status').val()) || (root.child('users').child(auth.uid).child('roles').child('registration').val() == true && (newData.child('status').val() == data.child('status').val() || (data.child('status').val() == 'In-Car' && newData.child('status').val() == 'Fetch-to-shop') || (data.child('status').val() == 'Fetch-to-shop' && newData.child('status').val() == 'Awaiting Shopper'))) || (root.child('users').child(auth.uid).child('roles').child('shopper').val() == true && (newData.child('status').val() == data.child('status').val() || (data.child('status').val() == 'Awaiting Shopper' && newData.child('status').val() == 'Shopping'))) || (root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true && (newData.child('status').val() == data.child('status').val() || (data.child('status').val() == 'Shopping' && (newData.child('status').val() == 'Wrapping' || newData.child('status').val() == 'Waiting for Reindeer')) || (data.child('status').val() == 'Wrapping' && newData.child('status').val() == 'Waiting for Reindeer'))))))",
+            ".validate": "!newData.exists() || (newData.hasChildren(['carNumber','parkingSpot','language','status','parkedAt']) && newData.child('carNumber').isString() && newData.child('carNumber').val().length > 0 && newData.child('carNumber').val().length <= 20 && newData.child('parkingSpot').isString() && newData.child('status').isString() && (newData.child('status').val() == 'In-Car' || newData.child('status').val() == 'Fetch-to-shop' || newData.child('status').val() == 'Awaiting Shopper' || newData.child('status').val() == 'Shopping' || newData.child('status').val() == 'Wrapping' || newData.child('status').val() == 'Waiting for Reindeer') && newData.child('parkedAt').isNumber())"
           }
         },
         "bags": {
@@ -64,13 +78,20 @@
         "statusHistory": {
           "$vehicleId": {
             "$entryId": {
-              ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || root.child('users').child(auth.uid).child('roles').child('shopper').val() == true || root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+              ".write": "auth != null && (root.child('users').child(auth.uid).child('roles').child('parking').val() == true || root.child('users').child(auth.uid).child('roles').child('registration').val() == true || root.child('users').child(auth.uid).child('roles').child('shopper').val() == true || root.child('users').child(auth.uid).child('roles').child('wrapper').val() == true || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
             }
           }
         },
         "activity": {
           "$entryId": {
-            ".write": "auth != null && root.child('users').child(auth.uid).child('roles').hasChildren()"
+            ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && root.child('users').child(auth.uid).child('roles').hasChildren()"
+          }
+        },
+        "connections": {
+          "$uid": {
+            "$sessionId": {
+              ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+            }
           }
         }
       }
@@ -78,9 +99,10 @@
     "presence": {
       "$eventId": {
         ".read": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('roles').child('admin').val() == true",
         "$uid": {
           "$sessionId": {
-            ".write": "auth != null && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
+            ".write": "auth != null && auth.token.firebase.sign_in_provider != 'anonymous' && ($uid == auth.uid || root.child('users').child(auth.uid).child('roles').child('admin').val() == true)"
           }
         }
       }
