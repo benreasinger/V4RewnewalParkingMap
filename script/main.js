@@ -15,7 +15,7 @@
   };
 
   const APP = {
-    totalSpots: 62,
+    totalSpots: 65,
     defaultEventId: "TestEvent11.4",
     statuses: [
       "In-Car",
@@ -81,6 +81,8 @@
     fetchReadySpots: new Set(),
     fetchReadyTimer: null,
     fetchNoticeTimer: null,
+    analyticsBagsEventId: null,
+    analyticsBagsLoading: false,
   };
 
   function esc(value) {
@@ -503,6 +505,8 @@
         state.removed = {};
         state.activity = {};
         state.presence = {};
+        state.analyticsBagsEventId = null;
+        state.analyticsBagsLoading = false;
         state.vehicleSnapshotReady = false;
         state.fetchReadySpots.clear();
         clearTimeout(state.fetchReadyTimer);
@@ -518,10 +522,12 @@
       ["deliveries", "deliveries"],
       ["removed", "removed"],
       ["activity", "activity"],
-    ];
+    ].filter(([child]) => !(page === "analytics" && child === "bags"));
+    const listenerEventId = state.eventId;
     mappings.forEach(([child, key]) => {
       const ref = firebase.database().ref(eventPath(child));
       const handler = (snapshot) => {
+        if (state.eventId !== listenerEventId) return;
         const nextValue = snapshot.val() || {};
         if (
           key === "vehicles" &&
@@ -1721,11 +1727,17 @@
         <div class="today-grid" id="todayOverview"></div>
       </section>
 
-      <section class="panel analytics-panel">
-        <h3>Gift Wrap Bags</h3>
-        <div class="metrics-grid analytics-metrics" id="giftWrapMetrics"></div>
-        <div class="analytics-status-list" id="giftWrapDetails"></div>
-      </section>
+      <details class="panel analytics-panel" id="giftWrapAnalyticsPanel" ontoggle="Renewal.toggleGiftWrapAnalytics(this)">
+        <summary style="cursor:pointer"><strong>Gift Wrap Bags</strong> <small id="giftWrapLoadState" style="display:block;color:var(--muted);margin-top:4px">Open to load this event’s gift-wrap data</small></summary>
+        <div style="margin-top:18px">
+          <div class="metrics-grid analytics-metrics" id="giftWrapMetrics"></div>
+          <div class="analytics-status-list" id="giftWrapDetails">
+            <details ontoggle="Renewal.toggleGiftWrapAnalyticsList('waiting',this)"><summary class="analytics-status-row" style="cursor:pointer"><span>Waiting for workstation</span><strong id="giftWrapWaitingCount">0</strong></summary><div class="device-list" id="giftWrapWaitingList"></div></details>
+            <details ontoggle="Renewal.toggleGiftWrapAnalyticsList('active',this)"><summary class="analytics-status-row" style="cursor:pointer"><span>At workstation</span><strong id="giftWrapActiveCount">0</strong></summary><div class="device-list" id="giftWrapActiveList"></div></details>
+            <details ontoggle="Renewal.toggleGiftWrapAnalyticsList('archived',this)"><summary class="analytics-status-row" style="cursor:pointer"><span>Archived completed vehicles</span><strong id="giftWrapArchivedCount">0</strong></summary><div class="device-list" id="giftWrapArchivedList"></div></details>
+          </div>
+        </div>
+      </details>
     `,
       "stats",
     );
@@ -1796,7 +1808,41 @@
       metric("Added", added) +
       metric("Delivered", deliveredToday) +
       metric("Peak Time", peakLabel);
+    if (state.analyticsBagsEventId === state.eventId)
+      renderGiftWrapAnalyticsData();
+  }
+
+  async function toggleGiftWrapAnalytics(details) {
+    if (!details.open) return;
+    if (state.analyticsBagsLoading) return;
+    state.analyticsBagsLoading = true;
+    const requestedEventId = state.eventId;
+    const loadState = document.getElementById("giftWrapLoadState");
+    if (loadState) loadState.textContent = "Loading gift-wrap data…";
+    try {
+      const snapshot = await firebase
+        .database()
+        .ref(`events/${requestedEventId}/bags`)
+        .once("value");
+      if (state.eventId !== requestedEventId) return;
+      state.bags = snapshot.val() || {};
+      state.analyticsBagsEventId = requestedEventId;
+      renderGiftWrapAnalyticsData();
+    } catch (error) {
+      console.error(error);
+      if (loadState)
+        loadState.textContent =
+          "Gift-wrap data could not be loaded. Close and reopen to retry.";
+    } finally {
+      state.analyticsBagsLoading = false;
+    }
+  }
+
+  function renderGiftWrapAnalyticsData() {
+    if (state.analyticsBagsEventId !== state.eventId) return;
     const bags = Object.values(state.bags);
+    const delivered = Object.values(state.deliveries);
+    const removed = Object.values(state.removed);
     const completedBags = bags.filter(
       (bag) => bag.status === "completed" && Number(bag.completedAt),
     );
@@ -1841,8 +1887,60 @@
           avgWrap ? formatDuration(Date.now() - avgWrap) : "—",
         );
     const wrapDetails = document.getElementById("giftWrapDetails");
-    if (wrapDetails)
-      wrapDetails.innerHTML = `<div class="analytics-status-row"><span>Waiting for workstation</span><strong>${bags.filter((bag) => bag.status === "waiting").length}</strong></div><div class="analytics-status-row"><span>At workstation</span><strong>${bags.filter((bag) => bag.status === "active").length}</strong></div><div class="analytics-status-row"><span>Archived completed vehicles</span><strong>${groupBagsByVehicle(bags.filter((bag) => bag.archived)).length}</strong></div>`;
+    if (!wrapDetails) return;
+    const waiting = bags.filter(
+      (bag) => bag.status === "waiting" && !bag.archived,
+    );
+    const active = bags.filter(
+      (bag) => bag.status === "active" && !bag.archived,
+    );
+    const archived = groupBagsByVehicle(bags.filter((bag) => bag.archived));
+    document.getElementById("giftWrapWaitingCount").textContent = waiting.length;
+    document.getElementById("giftWrapActiveCount").textContent = active.length;
+    document.getElementById("giftWrapArchivedCount").textContent = archived.length;
+    const loadState = document.getElementById("giftWrapLoadState");
+    if (loadState)
+      loadState.textContent = `Loaded for ${state.eventId || "the active event"} · Close and reopen to refresh`;
+    ["waiting", "active", "archived"].forEach((type) => {
+      const list = document.getElementById(
+        `giftWrap${type[0].toUpperCase()}${type.slice(1)}List`,
+      );
+      if (list?.closest("details")?.open) renderGiftWrapAnalyticsList(type);
+    });
+  }
+
+  function toggleGiftWrapAnalyticsList(type, details) {
+    if (details.open) renderGiftWrapAnalyticsList(type);
+  }
+
+  function renderGiftWrapAnalyticsList(type) {
+    if (state.analyticsBagsEventId !== state.eventId) return;
+    const target = document.getElementById(
+      `giftWrap${type[0].toUpperCase()}${type.slice(1)}List`,
+    );
+    if (!target) return;
+    const bags = Object.entries(state.bags).map(([id, bag]) => ({ id, ...bag }));
+    if (type === "archived") {
+      const groups = groupBagsByVehicle(bags.filter((bag) => bag.archived));
+      target.innerHTML = groups.length
+        ? groups
+          .map(
+            (group) => `<div class="device-item"><strong>Ticket ${esc(group.carNumber || "—")} · Spot ${esc(group.parkingSpot || "—")}</strong><span>${group.bags.length} archived bag${group.bags.length === 1 ? "" : "s"}</span><small>Archived ${formatDate(Math.max(...group.bags.map((bag) => Number(bag.archivedAt || 0))))}</small></div>`,
+          )
+          .join("")
+        : `<div class="empty-state compact">No archived completed vehicles in this event.</div>`;
+      return;
+    }
+    const matching = bags
+      .filter((bag) => bag.status === type && !bag.archived)
+      .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+    target.innerHTML = matching.length
+      ? matching
+        .map(
+          (bag) => `<div class="device-item"><strong>Ticket ${esc(bag.carNumber || "—")} · Spot ${esc(bag.parkingSpot || "—")}</strong><span>Bag ${esc(bag.bagIndex || "—")} of ${esc(bag.bagMax || "—")}</span><small>${type === "active" ? `Workstation ${esc(bag.workStation || "Unassigned")}` : "Waiting for workstation"}</small></div>`,
+        )
+        .join("")
+      : `<div class="empty-state compact">No ${type === "active" ? "bags at a workstation" : "bags waiting for a workstation"} in this event.</div>`;
   }
 
   function renderAdminData() {
@@ -2309,7 +2407,7 @@
         <p>Use this map to direct volunteers and families to the correct area.</p>
       </div>
       <div class="map-frame">
-        <img class="map-image" id="parkingLotMap" src="assets/parking-lot-map.png"
+        <img class="map-image" id="parkingLotMap" src="../assets/parking-lot-map.png"
           alt="Renewal parking lot map" onerror="Renewal.showMapPlaceholder()">
         
       </div>
@@ -2413,33 +2511,33 @@
   }
 
   function updateMobileBottomNav() {
-  const viewport = window.visualViewport;
+    const viewport = window.visualViewport;
 
-  if (!viewport) {
+    if (!viewport) {
+      document.documentElement.style.setProperty(
+        "--mobile-browser-bottom",
+        "0px"
+      );
+      return;
+    }
+
+    const hiddenBottomArea = Math.max(
+      0,
+      window.innerHeight - viewport.height - viewport.offsetTop
+    );
+
     document.documentElement.style.setProperty(
       "--mobile-browser-bottom",
-      "0px"
+      `${hiddenBottomArea}px`
     );
-    return;
   }
 
-  const hiddenBottomArea = Math.max(
-    0,
-    window.innerHeight - viewport.height - viewport.offsetTop
-  );
+  window.visualViewport?.addEventListener("resize", updateMobileBottomNav);
+  window.visualViewport?.addEventListener("scroll", updateMobileBottomNav);
+  window.addEventListener("resize", updateMobileBottomNav);
+  window.addEventListener("orientationchange", updateMobileBottomNav);
 
-  document.documentElement.style.setProperty(
-    "--mobile-browser-bottom",
-    `${hiddenBottomArea}px`
-  );
-}
-
-window.visualViewport?.addEventListener("resize", updateMobileBottomNav);
-window.visualViewport?.addEventListener("scroll", updateMobileBottomNav);
-window.addEventListener("resize", updateMobileBottomNav);
-window.addEventListener("orientationchange", updateMobileBottomNav);
-
-updateMobileBottomNav();
+  updateMobileBottomNav();
 
   async function start() {
     if (page === "home") return renderHome();
@@ -2542,6 +2640,8 @@ updateMobileBottomNav();
     resetInstanceTracker,
     openEventDetails,
     deleteEvent,
+    toggleGiftWrapAnalytics,
+    toggleGiftWrapAnalyticsList,
     showMapPlaceholder,
     showAssetPlaceholder,
   };
