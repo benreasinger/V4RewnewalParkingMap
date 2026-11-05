@@ -2407,7 +2407,7 @@
         <p>Use this map to direct volunteers and families to the correct area.</p>
       </div>
       <div class="map-frame">
-        <img class="map-image" id="parkingLotMap" src="../assets/parking-lot-map.png"
+        <img class="map-image" id="parkingLotMap" src="assets/parking-lot-map.png"
           alt="Renewal parking lot map" onerror="Renewal.showMapPlaceholder()">
         
       </div>
